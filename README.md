@@ -9,7 +9,11 @@ See `Linear-API-Integration-Plan.md` for the design rationale and the gap analys
 - **Phase 0 (spike)** — ✅ done. CLI live-tested against a real workspace (`viewer`, issue create → soft-delete → hard-delete → verify, type introspection). Findings in `references/rate-limits.md`.
 - **Phase 1 (MCP parity)** — ✅ done. Lean `SKILL.md`, foundational references (`auth`, `schema-summary`, `rate-limits`, `common-queries`), and three pattern-focused example scripts. The `common-queries.md` reference covers the full MCP surface: issues, comments, projects, initiatives, milestones, cycles, teams, users, labels, documents, attachments, customers, customer needs, status updates, project labels.
 - **Phase 2 (gap five — webhooks, cycles/states, relations, templates, admin)** — ✅ done. `references/webhooks.md` covers the full subscription surface (resource types, signing, delivery semantics, common pitfalls). `references/mutations-cheatsheet.md` covers cycle + workflow-state CRUD, issue relations + reactions + notification subscriptions, templates + custom views + favorites, and the audit log + admin / org / integration management surface. Plus `scripts/examples/subscribe_webhook.py`.
-- **Phase 3+ (OAuth `actor=app`, polish, retry helpers)** — deferred.
+- **Phase 3+ (OAuth `actor=app`, polish, retry helpers)** — backlog tracked in Linear:
+  - **[AGI-87](https://linear.app/agileandy/issue/AGI-87)** — OAuth `actor=app` flow
+  - **[AGI-88](https://linear.app/agileandy/issue/AGI-88)** — rate-limit-aware retry helper
+  - **[AGI-89](https://linear.app/agileandy/issue/AGI-89)** — schema introspection cache
+  - **[AGI-90](https://linear.app/agileandy/issue/AGI-90)** — structured mutation logging / telemetry
 
 ## Quick start
 
