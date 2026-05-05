@@ -8,8 +8,8 @@ See `Linear-API-Integration-Plan.md` for the design rationale and the gap analys
 
 - **Phase 0 (spike)** — ✅ done. CLI live-tested against a real workspace (`viewer`, issue create → soft-delete → hard-delete → verify, type introspection). Findings in `references/rate-limits.md`.
 - **Phase 1 (MCP parity)** — ✅ done. Lean `SKILL.md`, foundational references (`auth`, `schema-summary`, `rate-limits`, `common-queries`), and three pattern-focused example scripts. The `common-queries.md` reference covers the full MCP surface: issues, comments, projects, initiatives, milestones, cycles, teams, users, labels, documents, attachments, customers, customer needs, status updates, project labels.
-- **Phase 2 (gap five — webhooks, cycles/states, relations, templates, admin)** — in progress. Stubs in `references/webhooks.md` and `references/mutations-cheatsheet.md`.
-- **Phase 3+ (OAuth `actor=app`, polish)** — deferred.
+- **Phase 2 (gap five — webhooks, cycles/states, relations, templates, admin)** — ✅ done. `references/webhooks.md` covers the full subscription surface (resource types, signing, delivery semantics, common pitfalls). `references/mutations-cheatsheet.md` covers cycle + workflow-state CRUD, issue relations + reactions + notification subscriptions, templates + custom views + favorites, and the audit log + admin / org / integration management surface. Plus `scripts/examples/subscribe_webhook.py`.
+- **Phase 3+ (OAuth `actor=app`, polish, retry helpers)** — deferred.
 
 ## Quick start
 
@@ -58,6 +58,8 @@ Rate-limit (`x-ratelimit-*`) and complexity (`x-complexity`) headers are written
 uv run python scripts/examples/list_my_issues.py
 uv run python scripts/examples/create_issue.py --team-key AGI --title "..." --priority 2
 uv run python scripts/examples/paginate_issues.py --team-key AGI
+uv run python scripts/examples/subscribe_webhook.py --url https://your-receiver.example.com/linear \
+  --label "triage agent" --resource-types Issue Comment --team-key AGI
 ```
 
 These exist to demonstrate **patterns** (read, write-then-read, cursor pagination), not to enumerate every possible operation. For breadth, load `references/common-queries.md`.
@@ -85,14 +87,15 @@ linear-api/
 │   ├── schema-summary.md             # entity model, identifiers, pagination, soft/hard delete
 │   ├── rate-limits.md                # observed limits, complexity examples, retry pattern
 │   ├── common-queries.md             # 18 worked GraphQL ops — full MCP-parity surface
-│   ├── webhooks.md                   # webhook subscription mgmt (Phase 2)
-│   └── mutations-cheatsheet.md       # cycles, states, relations, templates, admin (Phase 2)
+│   ├── webhooks.md                   # webhook subscription mgmt (resource types, signing, delivery)
+│   └── mutations-cheatsheet.md       # the gap five — cycles, states, relations, templates, admin
 ├── scripts/
 │   ├── linear.py                     # GraphQL CLI
 │   └── examples/
 │       ├── list_my_issues.py
 │       ├── create_issue.py
-│       └── paginate_issues.py
+│       ├── paginate_issues.py
+│       └── subscribe_webhook.py
 └── tests/
     └── test_linear_client.py         # respx-mocked unit tests
 ```
