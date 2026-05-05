@@ -40,6 +40,19 @@ The agent **never** filters with `assignee = "me"` — always resolve to a concr
 
 1. **Fetch.** Read the issue's full detail via `scripts/linear.py query` using the `Get one issue, with relations` snippet from `references/common-queries.md`.
 2. **In Progress.** Move the issue to the team's `In Progress` state via `issueUpdate(id, input: { stateId: ... })`. Resolve the state ID once via the `Get a team's workflow states` query.
+
+   **Cascade up to the parent epic.** Right after the child transition, check `parent.state.type`. If it's `triage`, `backlog`, or `unstarted` (i.e. the epic hasn't been started yet), transition the parent to its team's `In Progress` state too. **Idempotent** — skip if the parent is already in any `started` state (another story has already moved it). **One level only** — don't recurse to grandparents. The reverse cascade (epic auto-closes when the last child is `Done`) is handled by Linear itself, so we don't mirror it here.
+
+   Compact form, both transitions in one batched mutation:
+
+   ```graphql
+   mutation Start($childId: String!, $parentId: String!, $startedStateId: String!) {
+     child:  issueUpdate(id: $childId,  input: { stateId: $startedStateId }) { success issue { state { name } } }
+     parent: issueUpdate(id: $parentId, input: { stateId: $startedStateId }) { success issue { state { name } } }
+   }
+   ```
+
+   Skip the `parent:` clause if there's no parent or the parent is already started.
 3. **Implement.** Do the work. If any code change is involved, branch first per the project's CLAUDE.md trunk-based-dev rule. Apply the project's per-task skill triggers (TDD, intent-audit, requirements-analyst, etc.) as relevant.
 4. **Done.** Move the issue to `Done` once the work is complete and tests pass.
 5. **Comment.** Post a short summary comment on the issue — what was done, the commit hash(es), the branch, anything the next reader needs to know. The comment is authored by the bot identity loaded above.
@@ -105,6 +118,7 @@ Workspace-scoped (no `teamId`) so the labels apply across all teams.
 - One workflow state transition per step. Don't jump from `Backlog` to `Done` without `In Progress` in between — the audit trail matters.
 - If a workflow needs an operation outside `references/common-queries.md`, run `scripts/linear.py introspect <Type>` to compose the right mutation rather than guessing.
 - When creating an Epic, the `Epic` label **and** the `Epic — ` title prefix both apply — neither alone. Same for Stories: the label and the parent link both apply, never one without the other.
+- **Cascade-on-start, not on close.** When moving a child to In Progress, also move its parent if the parent's `state.type` is `triage` / `backlog` / `unstarted`. Don't replicate the closing cascade — Linear auto-completes an epic when its last child is `Done`.
 
 ## Installation
 
