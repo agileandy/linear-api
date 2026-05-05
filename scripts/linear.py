@@ -37,10 +37,17 @@ class LinearError(RuntimeError):
 
 
 def load_document(arg: str) -> str:
-    """Return GraphQL text. If `arg` is a path that exists, read it; else treat as literal."""
-    candidate = Path(arg)
-    if candidate.is_file():
-        return candidate.read_text(encoding="utf-8")
+    """Return GraphQL text. If `arg` is a path that exists, read it; else treat as literal.
+
+    Inline GraphQL strings can exceed the OS path-component limit (255 bytes on macOS),
+    which makes `Path.is_file()` raise OSError. Treat that as "not a file."
+    """
+    try:
+        candidate = Path(arg)
+        if candidate.is_file():
+            return candidate.read_text(encoding="utf-8")
+    except OSError:
+        pass
     return arg
 
 

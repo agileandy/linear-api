@@ -95,6 +95,13 @@ def test_load_document_passthrough_for_inline_string() -> None:
     assert linear.load_document("query { __typename }") == "query { __typename }"
 
 
+def test_load_document_handles_oversized_inline_string() -> None:
+    # macOS path components cap at 255 bytes; a long inline GraphQL string used to
+    # crash Path.is_file() with OSError. Should now be treated as a literal.
+    long_query = "query Q { " + "a" * 400 + " }"
+    assert linear.load_document(long_query) == long_query
+
+
 def test_load_variables_inline() -> None:
     assert linear.load_variables('{"a": 1}') == {"a": 1}
 
