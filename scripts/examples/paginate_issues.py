@@ -55,7 +55,7 @@ def main() -> int:
     parser.add_argument("--team-key", required=True)
     args = parser.parse_args()
 
-    load_dotenv()
+    load_dotenv(override=True)
     api_key = os.environ.get("LINEAR_API_KEY")
     if not api_key:
         print("LINEAR_API_KEY not set", file=sys.stderr)

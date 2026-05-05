@@ -25,7 +25,47 @@ uv run python scripts/linear.py query 'query { viewer { id name email } }'
 
 ### Get a Linear API key
 
-Linear → **Settings → API → Personal API keys → Create key**. Copy the `lin_api_…` token into `.env` as `LINEAR_API_KEY`. The token grants the same permissions as your user account, so use a sandbox workspace for development. See `references/auth.md` for OAuth flows (Phase 3).
+Linear → **Settings → API → Personal API keys → Create key**. Copy the `lin_api_…` token into `.env` as `LINEAR_API_KEY`. The token grants the same permissions as your user account, so use a sandbox workspace for development.
+
+For a **named bot identity** (issues / comments attributed to the app rather than to you), see [Setting up OAuth `actor=app`](#setting-up-oauth-actorapp) below or `references/auth.md` for the full walkthrough.
+
+## Setting up a bot identity (optional)
+
+Skip if a personal API key is fine for your use case. Set this up when you want the skill's actions attributed to a **named bot** in Linear's UI and audit log instead of to you.
+
+### Recommended path: `client_credentials` grant
+
+For your own bot in your own workspace, this is the cleanest flow — no browser, no refresh dance, ~30-day tokens, higher rate limit (5,000 vs 2,500/hr).
+
+1. **Linear → Settings → API → OAuth applications → Create new application.**
+2. Fill in name + description. Add `http://localhost:8765/callback` to **Callback URLs** (required by the form even though `client_credentials` doesn't use it).
+3. **Toggle Client credentials ON.** That's the key step.
+4. **Create.** Copy `Client ID` + `Client Secret` into `.env`:
+   ```bash
+   LINEAR_OAUTH_CLIENT_ID=...
+   LINEAR_OAUTH_CLIENT_SECRET=...
+   ```
+5. Mint the bot token:
+   ```bash
+   uv run python scripts/client_credentials_token.py
+   ```
+   Writes the token to `.env` as `LINEAR_API_KEY`. ~30-day lifetime; re-run any time to mint a fresh one (cron-friendly).
+6. Verify:
+   ```bash
+   uv run python scripts/linear.py query 'query { viewer { id name displayName } }'
+   ```
+   Returns the bot's identity (e.g. `name: "ClaudeBot"`), not yours. `actor=app` cannot do `admin` mutations — for those, use a personal key owned by a workspace admin.
+
+### Alternative path: OAuth `authorization_code` + `actor=app`
+
+For distributing the skill to other workspaces (each user installs your app in theirs). Browser-based consent dance:
+
+```bash
+uv run python scripts/oauth_dance.py --write-env       # initial install
+uv run python scripts/oauth_refresh.py                 # rolling refresh, run via cron
+```
+
+See `references/auth.md` for the full walkthrough, the `prompt=consent` already-installed gotcha, and a known caveat about `actor=app` sometimes not being honored on the auth-code path. **`client_credentials` is more reliable for solo use.**
 
 ## Install as a Claude Code skill
 
@@ -95,6 +135,9 @@ linear-api/
 │   └── mutations-cheatsheet.md       # the gap five — cycles, states, relations, templates, admin
 ├── scripts/
 │   ├── linear.py                     # GraphQL CLI
+│   ├── client_credentials_token.py   # ⭐ recommended: mint a bot token (no browser)
+│   ├── oauth_dance.py                # multi-tenant install flow (browser dance)
+│   ├── oauth_refresh.py              # roll the OAuth dance's access token
 │   └── examples/
 │       ├── list_my_issues.py
 │       ├── create_issue.py

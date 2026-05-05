@@ -39,7 +39,7 @@ query Phase0Smoke {
 
 
 def main() -> int:
-    load_dotenv()
+    load_dotenv(override=True)
     api_key = os.environ.get("LINEAR_API_KEY")
     if not api_key:
         print("LINEAR_API_KEY not set", file=sys.stderr)

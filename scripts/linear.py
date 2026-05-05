@@ -60,10 +60,18 @@ def load_variables(raw: str | None) -> dict[str, Any]:
 
 
 def auth_header(api_key: str) -> str:
-    """Linear personal API keys go in `Authorization` raw; OAuth tokens use Bearer."""
-    if api_key.startswith("lin_oauth_") or api_key.startswith("Bearer "):
-        return api_key if api_key.startswith("Bearer ") else f"Bearer {api_key}"
-    return api_key
+    """Build the Authorization header value for Linear.
+
+    Personal API keys (prefix `lin_api_`) are sent **raw** — Linear's docs
+    explicitly say no `Bearer` prefix for them. Everything else (OAuth user
+    tokens, OAuth `actor=app` tokens, JWT-shaped access tokens) goes through
+    `Bearer`. A pre-formed `Bearer …` string is passed through untouched.
+    """
+    if api_key.startswith("Bearer "):
+        return api_key
+    if api_key.startswith("lin_api_"):
+        return api_key
+    return f"Bearer {api_key}"
 
 
 def log_rate_limits(headers: httpx.Headers) -> None:
@@ -191,7 +199,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    load_dotenv()
+    # `override=True` so the project's .env wins over any shell-env LINEAR_API_KEY
+    # that might be lingering from a previous setup. Without this, a personal key
+    # exported in your shell will shadow a bot token in .env.
+    load_dotenv(override=True)
     parser = build_parser()
     args = parser.parse_args(argv)
 

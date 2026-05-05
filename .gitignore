@@ -1,6 +1,8 @@
-# Secrets
+# Secrets — match any .env / .env.* / .envrc variant
 .env
-.env.local
+.env.*
+!.env.example
+.envrc
 *.key
 
 # Python
