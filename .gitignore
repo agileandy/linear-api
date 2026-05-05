@@ -1,9 +1,17 @@
-# Secrets — match any .env / .env.* / .envrc variant
+# Secrets — match any .env / .env.* / .envrc variant + common secret-file patterns
 .env
 .env.*
 !.env.example
 .envrc
 *.key
+*.pem
+*.p12
+*.pfx
+*.token
+secrets.*
+!secrets.example*
+id_rsa*
+id_ed25519*
 
 # Python
 __pycache__/
