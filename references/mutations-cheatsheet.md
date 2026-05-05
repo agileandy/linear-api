@@ -376,16 +376,108 @@ mutation Unpin($id: String!) { favoriteDelete(id: $id) { success } }
 
 ## 5. Audit log & admin
 
-> **Phase 2 — section in progress.** Until this fills in, introspect:
->
-> ```bash
-> uv run python scripts/linear.py introspect AuditEntryFilter
-> uv run python scripts/linear.py introspect Mutation   # grep for organizationInvite, userChangeRole, integration*
-> ```
->
-> Read path: `auditEntries(filter:)` returns workspace audit-log rows. Mutations: `userChangeRole`, `userSuspend`, `userUnsuspend`, `organizationInviteCreate / Update / Delete`, plus the integration-management mutations (`integrationSlack*`, `integrationGithub*`, etc — names track the integration).
->
-> The `admin` OAuth scope is required for most of these. Personal API keys also work if the owning user is a workspace admin.
+The compliance / IT-admin surface. Required for any agent that triages users, manages invites, audits actions, or wires integrations. Most of these need either a personal API key owned by a workspace admin, or an OAuth flow that requested the `admin` scope. **OAuth `actor=app` does not get `admin`** — workspace-wide bots can't perform user-management actions; that's an intentional safety boundary.
+
+### Audit entries (read)
+
+```graphql
+query AuditEntries($filter: AuditEntryFilter, $after: String) {
+  auditEntries(first: 100, after: $after, filter: $filter) {
+    nodes {
+      id type createdAt
+      ip countryCode
+      actor { name email }
+      requestInformation
+      metadata
+    }
+    pageInfo { hasNextPage endCursor }
+  }
+}
+```
+
+`AuditEntryFilter` accepts `type` (StringComparator), `actor` (NullableUserFilter), `ip`, `countryCode`, and `createdAt` / `updatedAt` (DateComparator), plus `and`/`or` for compounds. The `type` field is a string like `"Issue.create"`, `"User.update"`, `"OAuthApp.install"` — introspect the enum-shaped strings via a sample query and grep the workspace's actual entry types rather than guessing.
+
+```json
+{"filter": {
+  "type": { "in": ["User.changeRole", "User.suspend", "OAuthApp.install"] },
+  "createdAt": { "gte": "2026-04-01T00:00:00.000Z" }
+}}
+```
+
+### User management
+
+| Mutation | Args | When |
+|---|---|---|
+| `userChangeRole(id, role)` | `role` is `UserRoleType` enum | Promote / demote a user |
+| `userSuspend(id, forceBypassScimRestrictions)` | bypass needed if SCIM-managed | Lock out a compromised or off-boarded user |
+| `userUnsuspend(id, forceBypassScimRestrictions)` | as above | Re-enable a suspended user |
+| `userRevokeAllSessions(id)` | n/a | Force re-auth across all of a user's devices — security-incident tool |
+| `userRevokeSession(id, sessionId)` | n/a | Kill one specific session |
+
+`UserRoleType` enum values: `owner`, `admin`, `user`, `guest`, `app`. Note `app` — that's the actor=app role, not assignable via this mutation in normal flows.
+
+```graphql
+mutation Demote($id: String!) {
+  userChangeRole(id: $id, role: user) {
+    success
+    user { id name email }
+  }
+}
+```
+
+`role` is the `UserRoleType` enum on this mutation — pass enum literal `user`, not the string `"user"`. (Yes, this contradicts most of the rest of Linear's API; it's an inconsistency worth knowing.)
+
+### Organization invites
+
+```graphql
+mutation Invite($input: OrganizationInviteCreateInput!) {
+  organizationInviteCreate(input: $input) {
+    success
+    organizationInvite { id email role }
+  }
+}
+```
+
+Required: `email`. Optional: `role` (UserRoleType, defaults to `user`), `teamIds` (auto-add to teams on accept).
+
+```json
+{"input": {
+  "email": "new-engineer@agiledimensions.com.au",
+  "role": "admin",
+  "teamIds": ["<team-uuid>"]
+}}
+```
+
+`organizationInviteUpdate(id, input)` re-sends the invite or changes its role/teams. `organizationInviteDelete(id)` revokes a pending invite.
+
+### Organization-level settings
+
+| Mutation | Use |
+|---|---|
+| `organizationUpdate(input: OrganizationUpdateInput)` | Workspace name, logo, slug, allowed domains, default-team setting, etc. |
+| `organizationDomainCreate / Update / Delete / Verify / Claim` | Manage email domains that auto-join the workspace. Verify before Claim. |
+| `organizationDeleteChallenge`, `organizationDelete(input: DeleteOrganizationInput)` | Two-step destruction. The challenge returns a token you echo back to confirm. **Do not script this without explicit approval each time** — it deletes the workspace. |
+| `organizationCancelDelete` | Abort a pending deletion within the grace window. |
+| `organizationStartTrialForPlan(input)` | Start a paid-plan trial. |
+
+### Integration management — pattern, not enumeration
+
+There are ~58 integration mutations covering Slack, GitHub, Jira, GitLab, Figma, Sentry, Salesforce, Zendesk, PagerDuty, Opsgenie, Microsoft Teams, Google Sheets / Calendar, Intercom, Front, Discord, LaunchDarkly, MCP servers, and more. Listing them here would be a snapshot that rots within months. The patterns are stable:
+
+- **OAuth-based connect:** `integrationSlack(code, redirectUri, …)`, `integrationGithubConnect(code, installationId, …)`, etc. The agent runs the OAuth flow, captures the `code`, calls the connect mutation. The integration row appears in `integrations` query output.
+- **Per-integration update/config:** `integrationJiraUpdate(input: JiraUpdateInput)`, `integrationsSettingsUpdate(id, input)`. Each integration with deep config has its own input type — introspect when needed.
+- **Disconnect:** `integrationDelete(id, skipInstallationDeletion)` (full removal) or `integrationArchive(id)` (soft).
+- **Posting destinations:** `integrationSlackPost`, `integrationSlackProjectPost`, `integrationSlackInitiativePost`, `integrationSlackCustomViewNotifications`, etc. — wire a Linear surface to a specific Slack channel.
+- **MCP server provisioning:** `integrationMcpServerConnect(serverUrl, customHeaders, teamId, workflowDefinitionId)` — register an MCP server with a Linear team. Distinct from this skill (this skill talks to Linear directly; MCP server provisioning is for connecting a Linear workspace *to* an MCP server).
+
+To find the exact mutation you need, introspect the `Mutation` type and grep the integration name:
+
+```bash
+uv run python scripts/linear.py introspect Mutation 2>/dev/null \
+  | python3 -c "import json,sys; d=json.load(sys.stdin); [print(f['name']) for f in d['fields'] if 'jira' in f['name'].lower()]"
+```
+
+Then introspect that mutation's input type for the precise field shape. The mutations all follow the same `success` + entity-payload return convention as the rest of the API.
 
 ---
 
