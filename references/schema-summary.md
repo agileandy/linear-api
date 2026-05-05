@@ -87,7 +87,7 @@ Common comparators by field type:
 
 | Field type | Comparators |
 |---|---|
-| String | `eq`, `neq`, `in`, `nin`, `contains`, `startsWith`, `endsWith` (and `*IgnoreCase` variants) |
+| String | `eq`, `neq`, `in`, `nin`, `contains`, `startsWith`, `endsWith` (and `*IgnoreCase` variants). Enum-typed entity fields (e.g. `WorkflowState.type`) still expose **String** comparators on their filter input — pass quoted strings (`["unstarted", "started"]`), not bare enum literals. |
 | Number / DateTime | `eq`, `neq`, `lt`, `lte`, `gt`, `gte`, `in`, `nin` |
 | Boolean | `eq`, `neq` |
 | Relation | Nested filter object (`team: { key: { eq: "AGI" } }`) |
