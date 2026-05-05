@@ -50,7 +50,7 @@ When **creating** Linear issues (whether one-offs or as part of distilling a pla
 
 ### Epics
 
-- **Title prefix**: `Epic - <subject>` (e.g. `Epic - Phase 4 polish`).
+- **Title prefix**: `Epic — <subject>` (e.g. `Epic — Phase 4 polish`).
 - **Label**: apply the **`Epic`** label (orange — `#F2994A`).
 - **Parent**: none. Epics are top-level containers.
 - **Body**: outline the goal, the stories that hang off it, and the success criteria.
@@ -86,7 +86,7 @@ If you've cloned this repo into a workspace that doesn't yet have the labels, ru
 mutation Setup {
   epic: issueLabelCreate(input: {
     name: "Epic", color: "#F2994A",
-    description: "Top-level container for a body of work containing 1+ stories. Title prefix 'Epic - '."
+    description: "Top-level container for a body of work containing 1+ stories. Title prefix 'Epic — '."
   }) { success issueLabel { id name } }
   story: issueLabelCreate(input: {
     name: "Story", color: "#27AE60",
@@ -104,7 +104,7 @@ Workspace-scoped (no `teamId`) so the labels apply across all teams.
 - Never modify identity fields (`title`, `parent`, `labels`, `project`) the issue body doesn't ask you to change. Identity stays as filed unless the user explicitly authorises a change.
 - One workflow state transition per step. Don't jump from `Backlog` to `Done` without `In Progress` in between — the audit trail matters.
 - If a workflow needs an operation outside `references/common-queries.md`, run `scripts/linear.py introspect <Type>` to compose the right mutation rather than guessing.
-- When creating an Epic, the `Epic` label **and** the `Epic - ` title prefix both apply — neither alone. Same for Stories: the label and the parent link both apply, never one without the other.
+- When creating an Epic, the `Epic` label **and** the `Epic — ` title prefix both apply — neither alone. Same for Stories: the label and the parent link both apply, never one without the other.
 
 ## Installation
 

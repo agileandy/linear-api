@@ -91,7 +91,7 @@ For workflows that distinguish epics (top-level containers) from stories (user-s
 
 | | Epic | Story |
 |---|---|---|
-| Title | prefix `Epic - <subject>` | no prefix |
+| Title | prefix `Epic — <subject>` | no prefix |
 | Label | `Epic` (orange `#F2994A`) | `Story` (green `#27AE60`) |
 | Parent | none (top-level) | `parentId` = the Epic's UUID |
 
