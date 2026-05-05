@@ -269,15 +269,108 @@ mutation UpdateSubscription($id: String!, $input: NotificationSubscriptionUpdate
 
 ## 4. Templates, custom views, favorites
 
-> **Phase 2 — section in progress.** Until this fills in, introspect:
->
-> ```bash
-> uv run python scripts/linear.py introspect TemplateCreateInput
-> uv run python scripts/linear.py introspect CustomViewCreateInput
-> uv run python scripts/linear.py introspect FavoriteCreateInput
-> ```
->
-> Mutations: `templateCreate / Update / Delete`, `customViewCreate / Update / Delete`, `favoriteCreate / Delete` (no update — favorites are a leaf).
+Programmatic provisioning surface. The MCP only reads templates and views (and not always reliably) — the API exposes full CRUD for all three. Useful when an agent stands up a new team's scaffolding rather than just consuming an existing setup.
+
+### Templates
+
+Templates pre-fill an issue, project, or document with a baseline of fields and content. Type is one string of `"issue"`, `"project"`, or `"document"`.
+
+```graphql
+mutation CreateTemplate($input: TemplateCreateInput!) {
+  templateCreate(input: $input) {
+    success
+    template { id name type teamId }
+  }
+}
+```
+
+Required: `type`, `name`, `templateData` (JSON object — the baseline payload). `teamId` optional; omit for workspace-level.
+
+```json
+{"input": {
+  "type": "issue",
+  "name": "[Bug] Triage template",
+  "description": "Pre-fills the standard bug-report fields.",
+  "teamId": "<team-uuid>",
+  "templateData": {
+    "title": "[Bug] ",
+    "description": "## What happened\n\n## Expected\n\n## Repro steps\n",
+    "labelIds": ["<bug-label-uuid>"],
+    "priority": 3
+  }
+}}
+```
+
+The `templateData` shape mirrors `<Type>CreateInput` for the target entity. For an issue template, it's a partial `IssueCreateInput`-shaped object — same field names, same conventions. Unset fields are blank when the template materialises.
+
+`templateUpdate(id, input)` swaps any of `name`, `description`, `icon`, `color`, `teamId`, `templateData`, `sortOrder`. `templateDelete(id)` is hard delete.
+
+### Custom views
+
+A saved filter + display configuration that shows up in Linear's UI sidebar. The MCP can't create or modify these.
+
+```graphql
+mutation CreateView($input: CustomViewCreateInput!) {
+  customViewCreate(input: $input) {
+    success
+    customView { id name shared owner { name } }
+  }
+}
+```
+
+Required: `name`. `filterData` is an `IssueFilter` input — the same filter shape used in `issues(filter: …)` queries (see `references/schema-summary.md`). Pass `shared: true` to make the view visible to everyone in the workspace.
+
+```json
+{"input": {
+  "name": "P1 bugs across all teams",
+  "icon": "AlertCircle",
+  "color": "#FF6B6B",
+  "filterData": {
+    "priority": { "eq": 1 },
+    "labels": { "some": { "name": { "eq": "bug" } } }
+  },
+  "shared": true
+}}
+```
+
+You can scope a view to one `teamId`, `projectId`, or `initiativeId` instead of leaving it workspace-wide — Linear renders the view inside the relevant area of the UI when scoped. There's also `projectFilterData` (a `ProjectFilter`) for project-style views and `feedItemFilterData` for activity-feed views.
+
+`customViewUpdate(id, input)` accepts the same fields with everything optional. `customViewDelete(id)` is hard delete; users who had it favorited lose the link.
+
+### Favorites
+
+Favorites are the items in a user's sidebar pin list. Each favorite points at **one** target entity. The schema lists many possible target ids (`issueId`, `projectId`, `cycleId`, `customViewId`, `documentId`, `labelId`, `userId`, `customerId`, `releaseId`, `dashboardId`, etc.) — supply exactly one. Server-side enforces it.
+
+```graphql
+mutation Pin($input: FavoriteCreateInput!) {
+  favoriteCreate(input: $input) {
+    success
+    favorite { id sortOrder folderName }
+  }
+}
+```
+
+```json
+{"input": {
+  "issueId": "AGI-87",
+  "folderName": "Right now"
+}}
+```
+
+`folderName` groups the favorite into a named folder; pass a `parentId` to nest under an existing folder. Folders themselves are favorites with a `folderName` and no target id.
+
+```graphql
+mutation MovePin($id: String!, $input: FavoriteUpdateInput!) {
+  favoriteUpdate(id: $id, input: $input) {
+    success
+    favorite { id sortOrder folderName parent { id } }
+  }
+}
+
+mutation Unpin($id: String!) { favoriteDelete(id: $id) { success } }
+```
+
+`favoriteUpdate` only changes `sortOrder`, `parentId`, or `folderName` — you can't switch a favorite from one target to another. To change targets, delete and recreate.
 
 ---
 
