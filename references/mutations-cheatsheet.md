@@ -162,15 +162,108 @@ Linear refuses to archive a state that issues are currently in. Move issues out 
 
 ## 3. Relations, reactions, subscriptions
 
-> **Phase 2 — section in progress.** Until this fills in, introspect:
->
-> ```bash
-> uv run python scripts/linear.py introspect IssueRelationCreateInput
-> uv run python scripts/linear.py introspect ReactionCreateInput
-> uv run python scripts/linear.py introspect NotificationSubscriptionCreateInput
-> ```
->
-> The mutations are: `issueRelationCreate / Update / Delete`, `reactionCreate / Delete`, `notificationSubscriptionCreate / Update / Delete`. They follow the same pattern as everything else — `input: <Op>Input` on create, `id` + partial `input` on update, `id` only on delete.
+The three engagement primitives missing from the MCP. None of them are gated behind admin scope — any user-equivalent personal key can write them.
+
+### Issue relations
+
+Mark one issue as related to another. Use cases: "this is a duplicate of AGI-42", "AGI-87 blocks AGI-91", "see also AGI-58".
+
+```graphql
+mutation LinkIssues($input: IssueRelationCreateInput!) {
+  issueRelationCreate(input: $input) {
+    success
+    issueRelation { id type issue { identifier } relatedIssue { identifier } }
+  }
+}
+```
+
+```json
+{"input": {
+  "type": "blocks",
+  "issueId": "AGI-87",
+  "relatedIssueId": "AGI-91"
+}}
+```
+
+`type` is the `IssueRelationType` enum:
+
+| Value | Meaning |
+|---|---|
+| `blocks` | `issueId` blocks `relatedIssueId`. Linear automatically adds the inverse "blocked by" relation. |
+| `duplicate` | `issueId` is a duplicate of `relatedIssueId`. |
+| `related` | Loose link — informational. |
+| `similar` | Surfaced via Linear's similarity detection. |
+
+Both `issueId` and `relatedIssueId` accept a UUID or a human-readable identifier (`AGI-87`). The mutation resolves either form.
+
+`issueRelationUpdate(id, input)` accepts the same fields with everything optional. Note: in the *update* input, `type` is loosely typed as `String` rather than the enum — pass quoted strings (`"blocks"`).
+
+`issueRelationDelete(id)` removes the link. The inverse relation goes with it.
+
+### Reactions
+
+Add an emoji reaction to a comment, issue, project update, or initiative update. The exact same surface emojis use in the Linear UI.
+
+```graphql
+mutation React($input: ReactionCreateInput!) {
+  reactionCreate(input: $input) {
+    success
+    reaction { id emoji user { name } }
+  }
+}
+```
+
+`emoji` is required. Then **exactly one** target id — the schema allows several (`commentId`, `issueId`, `projectUpdateId`, `initiativeUpdateId`) but enforces "pick one" server-side. Don't send two; you'll get an error.
+
+```json
+{"input": { "emoji": "👍", "commentId": "<comment-uuid>" }}
+```
+
+```graphql
+mutation Unreact($id: String!) {
+  reactionDelete(id: $id) { success }
+}
+```
+
+`reactionDelete(id)` is hard delete — no trash. To find the reaction id, query the parent's `reactions` field and filter by `user.id` and `emoji`.
+
+### Notification subscriptions
+
+Subscribe an agent (or any user) to events on a specific resource. This is how an agent says "watch this issue / project / cycle for me." It's distinct from webhooks: subscriptions feed Linear's notification system (the bell icon, email digests, push), not a custom HTTP endpoint.
+
+```graphql
+mutation Subscribe($input: NotificationSubscriptionCreateInput!) {
+  notificationSubscriptionCreate(input: $input) {
+    success
+    notificationSubscription { id active notificationSubscriptionTypes }
+  }
+}
+```
+
+The input takes **one** of: `customerId`, `customViewId`, `cycleId`, `initiativeId`, `labelId`, `projectId`, `teamId`, `userId`. Pick the resource you want to follow.
+
+```json
+{"input": {
+  "projectId": "<project-uuid>",
+  "notificationSubscriptionTypes": ["issueCreated", "issueStatusChanged", "projectUpdateCreated"],
+  "active": true
+}}
+```
+
+`notificationSubscriptionTypes` is `[String!]` — passing an empty list (or omitting it) subscribes to **all** event types for that resource. Common values: `issueCreated`, `issueStatusChanged`, `issueDueDate`, `projectUpdateCreated`, `commentReaction`. Run `linear.py introspect Mutation` and grep for the related enum if you need the canonical list.
+
+```graphql
+mutation UpdateSubscription($id: String!, $input: NotificationSubscriptionUpdateInput!) {
+  notificationSubscriptionUpdate(id: $id, input: $input) {
+    success
+    notificationSubscription { id active notificationSubscriptionTypes }
+  }
+}
+```
+
+`NotificationSubscriptionUpdateInput` only exposes `active` and `notificationSubscriptionTypes`. Pause notifications by setting `active: false` instead of deleting.
+
+**There is no `notificationSubscriptionDelete` mutation.** Linear keeps subscription rows for audit purposes — toggle `active: false` and treat it as deleted. If you need a clean slate, the only way to remove the row entirely is via the UI.
 
 ---
 
