@@ -395,6 +395,44 @@ Workspace-level labels: omit `teamId`.
 
 ---
 
+## Cycles
+
+### List cycles for a team
+
+```graphql
+query TeamCycles($key: String!) {
+  teams(filter: { key: { eq: $key } }) {
+    nodes {
+      id key
+      cycles(first: 10, orderBy: createdAt) {
+        nodes {
+          id number name
+          startsAt endsAt
+          progress completedIssueCountHistory
+          issueCountHistory
+        }
+      }
+    }
+  }
+}
+```
+
+The Linear MCP is read-only on cycles. For cycle **mutations** (`cycleCreate`, `cycleUpdate`, `cycleArchive`, `cycleShiftAll`, `cycleStartUpcomingCycleToday`), see `references/mutations-cheatsheet.md` (Phase 2).
+
+---
+
+## Project labels
+
+### List project labels
+
+```graphql
+query ProjectLabels { projectLabels(first: 100) { nodes { id name color } } }
+```
+
+Project labels are workspace-level (unlike issue labels which can be team-scoped or workspace-scoped). The MCP has list-only; the API exposes `projectLabelCreate`, `projectLabelUpdate`, `projectLabelDelete`.
+
+---
+
 ## Documents
 
 ### List documents in a project
@@ -476,6 +514,14 @@ mutation Attach($input: AttachmentCreateInput!) {
 
 Attachments are how Linear surfaces external links (PRs, Figma, Notion). Run `linear.py introspect AttachmentCreateInput` for the full shape including `iconUrl` and `metadata`.
 
+### Delete an attachment
+
+```graphql
+mutation Detach($id: String!) { attachmentDelete(id: $id) { success } }
+```
+
+Hard delete; the linked external resource is unaffected.
+
 ---
 
 ## Customers & Status updates
@@ -502,6 +548,23 @@ mutation SaveCustomer($input: CustomerCreateInput!) {
 ```
 
 For updates, use `customerUpdate(id, input)`. Required fields on create: typically `name`.
+
+### Customer needs (save / delete)
+
+```graphql
+mutation SaveNeed($input: CustomerNeedCreateInput!) {
+  customerNeedCreate(input: $input) {
+    success
+    customerNeed { id body priority }
+  }
+}
+
+mutation DeleteNeed($id: String!) {
+  customerNeedDelete(id: $id) { success }
+}
+```
+
+Customer needs link customer feedback to issues / projects. Required: `customerId`, plus `body` and at least one of `issueId` / `projectId`.
 
 ### List status updates for a project
 
@@ -535,6 +598,14 @@ mutation PostUpdate($input: ProjectUpdateCreateInput!) {
 ```
 
 `health` enum: `onTrack`, `atRisk`, `offTrack`.
+
+### Delete a status update
+
+```graphql
+mutation DeleteUpdate($id: String!) {
+  projectUpdateDelete(id: $id) { success }
+}
+```
 
 ---
 
