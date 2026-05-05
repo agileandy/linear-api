@@ -44,6 +44,59 @@ The agent **never** filters with `assignee = "me"` — always resolve to a concr
 4. **Done.** Move the issue to `Done` once the work is complete and tests pass.
 5. **Comment.** Post a short summary comment on the issue — what was done, the commit hash(es), the branch, anything the next reader needs to know. The comment is authored by the bot identity loaded above.
 
+## Issue creation conventions
+
+When **creating** Linear issues (whether one-offs or as part of distilling a plan), follow this hierarchy convention. The title prefix gives at-a-glance visibility; the label gives filterability.
+
+### Epics
+
+- **Title prefix**: `Epic - <subject>` (e.g. `Epic - Phase 4 polish`).
+- **Label**: apply the **`Epic`** label (orange — `#F2994A`).
+- **Parent**: none. Epics are top-level containers.
+- **Body**: outline the goal, the stories that hang off it, and the success criteria.
+
+### Stories
+
+- **Title**: no prefix.
+- **Label**: apply the **`Story`** label (green — `#27AE60`).
+- **Parent**: set `parentId` to the Epic's UUID. Stories are *always* children of an Epic.
+- **Body**: user-story-sized scope — small enough to ship in one go.
+
+### Resolving label IDs at use time
+
+Labels are referenced by **UUID** in `IssueCreateInput.labelIds`, but workspace-portability means the agent should resolve them by **name** at use time rather than hardcoding:
+
+```graphql
+query LabelIds {
+  issueLabels(filter: {
+    name: { in: ["Epic", "Story"] }
+  }) {
+    nodes { id name }
+  }
+}
+```
+
+Cache the result for the session; re-resolve if the cache is stale.
+
+### Setup for a new workspace
+
+If you've cloned this repo into a workspace that doesn't yet have the labels, run this once via the `linear-api` skill:
+
+```graphql
+mutation Setup {
+  epic: issueLabelCreate(input: {
+    name: "Epic", color: "#F2994A",
+    description: "Top-level container for a body of work containing 1+ stories. Title prefix 'Epic - '."
+  }) { success issueLabel { id name } }
+  story: issueLabelCreate(input: {
+    name: "Story", color: "#27AE60",
+    description: "User-story-sized unit of work; child of an Epic-labelled issue."
+  }) { success issueLabel { id name } }
+}
+```
+
+Workspace-scoped (no `teamId`) so the labels apply across all teams.
+
 ## Hard rules
 
 - Never call `mcp__linear-server__*` tools or `mcp__claude_ai_Linear__*` tools. Both are gone — calls will fail.
@@ -51,6 +104,7 @@ The agent **never** filters with `assignee = "me"` — always resolve to a concr
 - Never modify identity fields (`title`, `parent`, `labels`, `project`) the issue body doesn't ask you to change. Identity stays as filed unless the user explicitly authorises a change.
 - One workflow state transition per step. Don't jump from `Backlog` to `Done` without `In Progress` in between — the audit trail matters.
 - If a workflow needs an operation outside `references/common-queries.md`, run `scripts/linear.py introspect <Type>` to compose the right mutation rather than guessing.
+- When creating an Epic, the `Epic` label **and** the `Epic - ` title prefix both apply — neither alone. Same for Stories: the label and the parent link both apply, never one without the other.
 
 ## Installation
 

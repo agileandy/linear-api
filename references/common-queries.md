@@ -85,6 +85,24 @@ Variables — the only required fields are `teamId` and `title`:
 
 `priority` is `0` (none) → `1` (urgent) → `2` (high) → `3` (medium) → `4` (low).
 
+### Hierarchy convention — Epic vs Story
+
+For workflows that distinguish epics (top-level containers) from stories (user-story-sized children), this repo's `/linear` slash command (`.claude/commands/linear.md`) defines a labels-plus-title-prefix convention:
+
+| | Epic | Story |
+|---|---|---|
+| Title | prefix `Epic - <subject>` | no prefix |
+| Label | `Epic` (orange `#F2994A`) | `Story` (green `#27AE60`) |
+| Parent | none (top-level) | `parentId` = the Epic's UUID |
+
+Resolve label UUIDs by name at use time:
+
+```graphql
+query { issueLabels(filter: { name: { in: ["Epic", "Story"] } }) { nodes { id name } } }
+```
+
+The label and the structural rule (prefix or parent) are applied **together**, never one without the other.
+
 ### Create an issue with assignee, labels, project
 
 ```graphql
