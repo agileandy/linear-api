@@ -6,8 +6,8 @@ See `Linear-API-Integration-Plan.md` for the design rationale and gap analysis v
 
 ## Status
 
-- **Phase 0 (spike)**: scaffolded — `scripts/linear.py` CLI runs `query` / `mutation` / `introspect`. Awaiting live API key for end-to-end smoke test.
-- **Phase 1 (MCP parity)**: not started.
+- **Phase 0 (spike)**: ✅ done — CLI live-tested against a real workspace (viewer query, issue create + soft-delete + hard-delete + verify, type introspection). Findings in `references/rate-limits.md`.
+- **Phase 1 (MCP parity)**: in progress.
 - **Phase 2 (gap five — webhooks, cycles/states, relations, templates, admin)**: not started.
 - **Phase 3+ (OAuth `actor=app`, polish)**: deferred.
 
