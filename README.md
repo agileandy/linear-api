@@ -224,8 +224,6 @@ linear-api/
 ├── SKILL.md                          # lean entry point — agent's first read
 ├── README.md                         # this file
 ├── LICENSE                           # MIT
-├── HANDOFF.md                        # original build brief (preserved for context)
-├── Linear-API-Integration-Plan.md    # design rationale + MCP gap analysis
 ├── pyproject.toml                    # httpx, python-dotenv (runtime); pytest, respx (dev)
 ├── .env.example                      # auth template
 ├── .claude/
@@ -248,8 +246,11 @@ linear-api/
 │       ├── create_issue.py
 │       ├── paginate_issues.py
 │       └── subscribe_webhook.py
-└── tests/
-    └── test_linear_client.py         # respx-mocked unit tests — never hit Linear
+├── tests/
+│   └── test_linear_client.py         # respx-mocked unit tests — never hit Linear
+└── docs/
+    ├── HANDOFF.md                    # original build brief
+    └── Linear-API-Integration-Plan.md  # design rationale + MCP gap analysis
 ```
 
 ## Development
@@ -280,8 +281,8 @@ PRs welcome. Conventions:
 
 ### Project history
 
-- `HANDOFF.md` — the original build brief.
-- `Linear-API-Integration-Plan.md` — the design doc + gap analysis vs the Linear MCP. Worth reading if you want to understand *why* the project is shaped the way it is.
+- [`docs/HANDOFF.md`](docs/HANDOFF.md) — the original build brief.
+- [`docs/Linear-API-Integration-Plan.md`](docs/Linear-API-Integration-Plan.md) — the design doc + gap analysis vs the Linear MCP. Worth reading if you want to understand *why* the project is shaped the way it is.
 - Git log — phase-by-phase commit history. Each commit's message has the live-test findings that drove the changes.
 
 ## License
