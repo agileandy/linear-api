@@ -72,7 +72,7 @@ mutation CreateIssue($input: IssueCreateInput!) {
 }
 ```
 
-Variables — the only required fields are `teamId` and `title`:
+Variables — the only required fields are `teamId` and `title`. The `teamId` below is the **AgileAndy** team (the default team unless the user names a different one — see SKILL.md "Default team"):
 
 ```json
 {"input": {

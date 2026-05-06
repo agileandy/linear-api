@@ -26,6 +26,16 @@ If the user already has the Linear MCP loaded and the task is plain read or simp
 3. Smoke check: `uv run python scripts/linear.py query 'query { viewer { id name email } }'`.
 4. You're live. Pick the reference file matching the task and load only that one.
 
+## Default team
+
+If the user does not name a team, default to **AgileAndy** (key `AGI`). Resolve its UUID once per session and reuse:
+
+```graphql
+query { teams(filter: { name: { eq: "AgileAndy" } }) { nodes { id key name } } }
+```
+
+Cache the returned `id` for the rest of the session. Only override when the user explicitly names a different team.
+
 ## Reference file index — load only what you need
 
 | File | Load when the task is about… |
